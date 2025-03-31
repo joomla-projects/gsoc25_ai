@@ -10,6 +10,7 @@
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Factory;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Multilanguage;
 use Joomla\CMS\Language\Text;
@@ -34,6 +35,8 @@ $params = $this->state->get('params');
 if (!$params->exists('show_publishing_options')) {
     $params->set('show_urls_images_frontend', '0');
 }
+
+$menu = Factory::getApplication()->getMenu()->getActive();
 ?>
 <div class="edit item-page">
     <?php if ($params->get('show_page_heading')) : ?>
@@ -44,7 +47,7 @@ if (!$params->exists('show_publishing_options')) {
     </div>
     <?php endif; ?>
 
-    <form action="<?php echo Route::_('index.php?option=com_content&a_id=' . (int) $this->item->id); ?>" method="post" name="adminForm" id="adminForm" class="form-validate form-vertical">
+    <form action="<?php echo Route::_('index.php?option=com_content&a_id=' . (int) $this->item->id . ($menu ? "&Itemid={$menu->id}" : '')); ?>" method="post" name="adminForm" id="adminForm" class="form-validate form-vertical">
         <fieldset>
             <?php echo HTMLHelper::_('uitab.startTabSet', $this->tab_name, ['active' => 'editor', 'recall' => true, 'breakpoint' => 768]); ?>
 
