@@ -343,6 +343,18 @@ class ArticleController extends FormController
         $result    = parent::save($key, $urlVar);
 
         if (\in_array($this->getTask(), ['save2copy', 'apply'], true)) {
+            // Set Itemid of the article for redirect
+            $menu = $this->app->getMenu()->getItems('link', 'index.php?option=' . $this->option . '&view=article&id=' . $this->input->getInt($urlVar), true);
+            if ($menu) {
+                $this->input->set('Itemid', $menu->id);
+            }
+            $this->setRedirect(
+                Route::_(
+                    'index.php?option=' . $this->option . '&view=' . $this->view_item
+                        . $this->getRedirectToItemAppend($this->input->getInt($urlVar), $urlVar),
+                    false
+                )
+            );
             return $result;
         }
 
