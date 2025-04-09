@@ -71,17 +71,6 @@ class ArticleController extends FormController
 
             return;
         }
-
-        // Redirect to the edit screen.
-        $this->setRedirect(
-            Route::_(
-                'index.php?option=' . $this->option . '&view=' . $this->view_item . '&a_id=0'
-                . $this->getRedirectToItemAppend(),
-                false
-            )
-        );
-
-        return true;
     }
 
     /**
