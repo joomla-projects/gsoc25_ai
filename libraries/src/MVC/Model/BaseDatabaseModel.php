@@ -25,6 +25,7 @@ use Joomla\CMS\MVC\Factory\MVCFactoryServiceInterface;
 use Joomla\CMS\Table\Table;
 use Joomla\CMS\User\CurrentUserInterface;
 use Joomla\CMS\User\CurrentUserTrait;
+use Joomla\Database\DatabaseAwareInterface;
 use Joomla\Database\DatabaseAwareTrait;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Database\DatabaseQuery;
@@ -44,8 +45,11 @@ use Joomla\Event\EventInterface;
  * Acts as a Factory class for application specific objects and provides many supporting API functions.
  *
  * @since  2.5.5
+ *
+ * @TODO  Starting from 7.0 the class will no longer implement DatabaseModelInterface
  */
 abstract class BaseDatabaseModel extends BaseModel implements
+    DatabaseAwareInterface,
     DatabaseModelInterface,
     DispatcherAwareInterface,
     CurrentUserInterface,
@@ -390,7 +394,7 @@ abstract class BaseDatabaseModel extends BaseModel implements
      * @since   4.2.0
      * @throws  \UnexpectedValueException
      *
-     * @deprecated  4.3 will be removed in 6.0
+     * @deprecated  4.3 will be removed in 7.0
      *              Use getDatabase() instead
      *              Example: $model->getDatabase();
      */
