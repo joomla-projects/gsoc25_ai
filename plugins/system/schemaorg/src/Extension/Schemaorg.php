@@ -140,7 +140,7 @@ final class Schemaorg extends CMSPlugin implements SubscriberInterface, Dispatch
         $context = $form->getName();
         $app     = $this->getApplication();
 
-        if (!$app->isClient('administrator') || !$this->isSupported($context)) {
+        if (!($app->isClient('administrator') || $app->isClient('api')) || !$this->isSupported($context)) {
             return;
         }
 
@@ -201,7 +201,7 @@ final class Schemaorg extends CMSPlugin implements SubscriberInterface, Dispatch
         $app     = $this->getApplication();
         $db      = $this->getDatabase();
 
-        if (!$app->isClient('administrator') || !$this->isSupported($context)) {
+        if (!($app->isClient('administrator') || $app->isClient('api')) || !$this->isSupported($context)) {
             return;
         }
 
