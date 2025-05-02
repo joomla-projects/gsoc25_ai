@@ -432,15 +432,17 @@ class ManageModel extends InstallerModel
         $this->translate($extensions);
         $extension = array_shift($extensions);
 
-        $changelogurl = $source === 'manage' ? $extension->changelogurl : $extension->updateChangelogUrl;
+        if ($source === 'manage' && !$extension->changelogurl) {
+            return '';
+        }
 
-        if (!$changelogurl) {
+        if ($source === 'update' && !$extension->updateChangelogurl && !$extension->changelogurl) {
             return '';
         }
 
         $changelog = new Changelog();
         $changelog->setVersion($source === 'manage' ? $extension->version : $extension->updateVersion);
-        $changelog->loadFromXml($changelogurl);
+        $changelog->loadFromXml($source === 'manage' ? $extension->changelogurl : ($extension->updateChangelogurl ?: $extension->changelogurl));
 
         // Read all the entries
         $entries = [

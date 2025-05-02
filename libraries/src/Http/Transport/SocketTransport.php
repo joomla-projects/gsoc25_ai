@@ -176,6 +176,7 @@ class SocketTransport extends AbstractTransport implements TransportInterface
 
         $streamInterface = new StreamResponse('php://memory', 'rw');
         $streamInterface->write($body);
+        $streamInterface->rewind();
 
         return new Response($streamInterface, $statusCode, $verifiedHeaders);
     }

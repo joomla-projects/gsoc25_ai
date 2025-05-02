@@ -370,7 +370,7 @@ class Changelog
         xml_set_element_handler($this->xmlParser, [$this, 'startElement'], [$this, 'endElement']);
         xml_set_character_data_handler($this->xmlParser, [$this, 'characterData']);
 
-        if (!xml_parse($this->xmlParser, $response->body)) {
+        if (!xml_parse($this->xmlParser, $response->getBody()->getContents())) {
             Log::add(
                 \sprintf(
                     'XML error: %s at line %d',
