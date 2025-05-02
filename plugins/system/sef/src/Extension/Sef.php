@@ -174,7 +174,10 @@ final class Sef extends CMSPlugin implements SubscriberInterface
         $sefDomain = $this->params->get('domain', false);
 
         // Don't add a canonical html tag if no alternative domain has added in SEF plugin domain field.
-        if (empty($sefDomain)) {
+		// Don't add it either if site is multilingual as this would break hreflang management.
+		// This is hopefully temporary until HTML document head links can manage multiple
+		// entries for the same URL.
+        if (empty($sefDomain) || $app->getLanguageFilter()) {
             return;
         }
 
