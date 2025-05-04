@@ -40,7 +40,7 @@ return new class () implements ServiceProviderInterface {
     public function register(Container $container)
     {
         $container->set(
-            PluginInterface::class,
+            Webauthn::class,
             function (Container $container) {
                 $app     = Factory::getApplication();
                 $session = $container->has('session') ? $container->get('session') : $this->getSession($app);
@@ -54,12 +54,12 @@ return new class () implements ServiceProviderInterface {
                 $params             = new Registry($config['params'] ?? '{}');
 
                 if ($params->get('attestationSupport', 0) == 1) {
-                    $metadataRepository    = $container->has(MetadataStatementRepository::class)
+                    $metadataRepository = $container->has(MetadataStatementRepository::class)
                         ? $container->get(MetadataStatementRepository::class)
                         : new MetadataRepository();
                 }
 
-                $authenticationHelper  = $container->has(Authentication::class)
+                $authenticationHelper = $container->has(Authentication::class)
                     ? $container->get(Authentication::class)
                     : new Authentication($app, $session, $credentialsRepository, $metadataRepository);
 
@@ -71,6 +71,17 @@ return new class () implements ServiceProviderInterface {
                 $plugin->setApplication($app);
 
                 return $plugin;
+            }
+        )->set(
+            PluginInterface::class,
+            function (Container $container) {
+                if (PHP_VERSION_ID >= 80400) {
+                    return (new ReflectionClass(Webauthn::class))->newLazyProxy(function () use ($container) {
+                        return $container->get(Webauthn::class);
+                    });
+                }
+
+                return $container->get(Webauthn::class);
             }
         );
     }
