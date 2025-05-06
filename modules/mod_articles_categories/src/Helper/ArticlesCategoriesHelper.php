@@ -47,7 +47,8 @@ class ArticlesCategoriesHelper implements DatabaseAwareInterface
         $options = [];
 
         // Get the number of items in this category or descendants of this category at the expense of performance.
-        $options['countItems'] = $moduleParams->get('numitems', 0);
+        $options['countItems']    = $moduleParams->get('numitems', 0);
+        $options['accessOnItems'] = true;
 
         /** @var CategoryInterface $categoryFactory */
         $categoryFactory = $app->bootComponent('com_content')->getCategory($options);
