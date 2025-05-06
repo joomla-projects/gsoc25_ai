@@ -345,6 +345,14 @@ abstract class FormField implements DatabaseAwareInterface, CurrentUserInterface
     protected $showon;
 
     /**
+     * Use the global (inherited) field value or local set field value on showon.
+     *
+     * @var    boolean
+     * @since  __DEPLOY_VERSION__
+     */
+    protected $showonLocal = false;
+
+    /**
      * The parent class of the field
      *
      * @var  string
@@ -473,6 +481,7 @@ abstract class FormField implements DatabaseAwareInterface, CurrentUserInterface
             case 'spellcheck':
             case 'validationtext':
             case 'showon':
+            case 'showonLocal':
             case 'parentclass':
                 return $this->$name;
 
@@ -565,6 +574,7 @@ abstract class FormField implements DatabaseAwareInterface, CurrentUserInterface
             case 'readonly':
             case 'autofocus':
             case 'hidden':
+            case 'showonLocal':
                 $value       = (string) $value;
                 $this->$name = ($value === 'true' || $value === $name || $value === '1');
                 break;
@@ -658,7 +668,7 @@ abstract class FormField implements DatabaseAwareInterface, CurrentUserInterface
         $attributes = [
             'multiple', 'name', 'id', 'hint', 'class', 'description', 'labelclass', 'onchange', 'onclick', 'validate', 'pattern', 'validationtext',
             'default', 'required', 'disabled', 'readonly', 'autofocus', 'hidden', 'autocomplete', 'spellcheck', 'translateHint', 'translateLabel',
-            'translate_label', 'translateDescription', 'translate_description', 'size', 'showon', ];
+            'translate_label', 'translateDescription', 'translate_description', 'size', 'showon', 'showonLocal', ];
 
         $this->default = isset($element['value']) ? (string) $element['value'] : $this->default;
 
