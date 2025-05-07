@@ -238,35 +238,41 @@ class AddUserCommand extends AbstractCommand
 
         $groupList = [];
 
-        // Group names have been supplied as input arguments
+        // Group values have been supplied
         if (!\is_null($groups) && $groups[0]) {
             $groups = explode(',', $groups);
 
-            foreach ($groups as $group) {
-                $groupId = $this->getGroupId($group);
+            foreach ($groups as $groupInput) {
+                $groupInput = trim($groupInput);
 
-                if (empty($groupId)) {
-                    $this->ioStyle->error("Invalid group name '" . $group . "'");
-                    throw new InvalidOptionException("Invalid group name " . $group);
+                // Try ID
+                if (ctype_digit($groupInput)) {
+                    $groupId = $this->getGroupIdById((int) $groupInput);
+                } else {
+                    $groupId = $this->getGroupIdByName($groupInput);
                 }
 
-                $groupList[] = $this->getGroupId($group);
+                if (empty($groupId)) {
+                    $this->ioStyle->error("Invalid group: '" . $groupInput . "'");
+                    throw new InvalidOptionException("Invalid group: " . $groupInput);
+                }
+
+                $groupList[] = $groupId;
             }
 
             return $groupList;
         }
 
-        // Generate select list for user
+        // No group provided → prompt interactively
         $query = $db->getQuery(true)
             ->select($db->quoteName('title'))
             ->from($db->quoteName('#__usergroups'))
             ->order($db->quoteName('id') . 'ASC');
         $db->setQuery($query);
-
         $list = $db->loadColumn();
 
         $choice = new ChoiceQuestion(
-            'Please select a usergroup (separate multiple groups with a comma)',
+            'Please select a usergroup (separate multiple groups with comma)',
             $list
         );
         $choice->setMultiselect(true);
@@ -274,10 +280,48 @@ class AddUserCommand extends AbstractCommand
         $answer = (array) $this->ioStyle->askQuestion($choice);
 
         foreach ($answer as $group) {
-            $groupList[] = $this->getGroupId($group);
+            $groupList[] = $this->getGroupIdByName($group);
         }
 
         return $groupList;
+    }
+
+    /**
+     * @param  string  $groupName
+     * @return  int|null
+     */
+    protected function getGroupIdByName(string $groupName): ?int
+    {
+        $db = $this->getDatabase();
+
+        $query = $db->getQuery(true)
+            ->select($db->quoteName('id'))
+            ->from($db->quoteName('#__usergroups'))
+            ->where($db->quoteName('title') . ' = :groupName')
+            ->bind(':groupName', $groupName);
+
+        $db->setQuery($query);
+
+        return $db->loadResult() ?: null;
+    }
+
+    /**
+     * @param   int  $groupId
+     * @return  int|null
+     */
+    protected function getGroupIdById(int $groupId): ?int
+    {
+        $db = $this->getDatabase();
+
+        $query = $db->getQuery(true)
+            ->select($db->quoteName('id'))
+            ->from($db->quoteName('#__usergroups'))
+            ->where($db->quoteName('id') . ' = :groupId')
+            ->bind(':groupId', $groupId);
+
+        $db->setQuery($query);
+
+        return $db->loadResult() ?: null;
     }
 
     /**
