@@ -157,6 +157,9 @@ class NomenuRules implements RulesInterface
                             }
                         } else {
                             $segments[] = str_replace(':', '-', array_pop($result));
+                            if ($view->parent_key) {
+                                unset($query[$view->parent_key]);
+                            }
                         }
                     } else {
                         $segments[] = str_replace(':', '-', $query[$view->key]);
