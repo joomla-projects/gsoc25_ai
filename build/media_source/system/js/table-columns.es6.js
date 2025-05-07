@@ -187,15 +187,45 @@ class TableColumns {
 if (window.innerWidth > 992) {
   // Look for dataset name else page-title
   [...document.querySelectorAll('table:not(.columns-order-ignore)')].forEach(($table) => {
-    const tableName = ($table.dataset.name ? $table.dataset.name : document.querySelector('.page-title')
-      .textContent.trim()
-      .replace(/[^a-z0-9]/gi, '-')
-      .toLowerCase()
-    );
+    let tableName = $table.dataset.name;
 
-    // Skip unnamed table
     if (!tableName) {
-      return;
+      const pageTitle = document.querySelector('.page-title');
+      const urlParams = new URLSearchParams(window.location.search);
+      const option = urlParams.get('option') || '';
+      const view = urlParams.get('view') || 'default';
+      const clientId = urlParams.get('client_id') || '';
+      const component = option.replace('com_', '');
+      const layout = urlParams.get('layout') || '';
+      const id = urlParams.get('id') || '';
+
+      if (pageTitle) {
+        tableName = pageTitle.textContent.trim()
+          .replace(/[^a-z0-9]/gi, '-')
+          .toLowerCase();
+      } else if (component) {
+        tableName = `${component}--${view}`;
+        if (layout) {
+          tableName += `--${layout}`;
+        }
+        if (id) {
+          tableName += `--${id}`;
+        }
+        if (clientId === '1') {
+          tableName += '--administrator';
+        }
+      } else {
+        tableName = `view--${view}`;
+
+        if (clientId === '1') {
+          tableName += '--administrator';
+        }
+      }
+    }
+    if (!tableName) {
+      const tables = document.querySelectorAll('table:not(.columns-order-ignore)');
+      const tableIndex = Array.from(tables).indexOf($table);
+      tableName = `default-table--${tableIndex}`;
     }
 
     /* eslint-disable-next-line no-new */
