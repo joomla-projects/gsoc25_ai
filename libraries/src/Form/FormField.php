@@ -21,6 +21,7 @@ use Joomla\Database\DatabaseAwareInterface;
 use Joomla\Database\DatabaseAwareTrait;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Database\Exception\DatabaseNotFoundException;
+use Joomla\Filesystem\Path;
 use Joomla\Registry\Registry;
 use Joomla\String\Normalise;
 use Joomla\String\StringHelper;
@@ -399,6 +400,14 @@ abstract class FormField implements DatabaseAwareInterface, CurrentUserInterface
     protected $renderLabelLayout = 'joomla.form.renderlabel';
 
     /**
+     * Additional layout paths to look for layout files
+     *
+     * @var   array
+     * @since __DEPLOY_VERSION__
+     */
+    protected $layoutPaths = [];
+
+    /**
      * The data-attribute name and values of the form field.
      * For example, data-action-type="click" data-action-type="change"
      *
@@ -591,6 +600,25 @@ abstract class FormField implements DatabaseAwareInterface, CurrentUserInterface
                 $this->$name = (int) $value;
                 break;
 
+            case 'layoutIncludePath':
+                $app = Factory::getApplication();
+
+                if ($app->isClient('site') || $app->isClient('administrator')) {
+                    // Try to get a default template
+                    $template = $app->getTemplate(true);
+
+                    // Use unshift to use a lower priority
+                    array_unshift($this->layoutPaths, JPATH_THEMES . '/' . $template->template . '/html/' . ltrim((string) $value, '/'));
+
+                    if (!empty($template->parent)) {
+                        array_unshift($this->layoutPaths, JPATH_THEMES . '/' . $template->parent . '/html/' . ltrim((string) $value, '/'));
+                    }
+                }
+
+                // Use unshift to use a lower priority
+                array_unshift($this->layoutPaths, JPATH_ROOT . '/' . ltrim((string) $value, '/'));
+                break;
+
             default:
                 // Detect data attribute(s)
                 if (str_starts_with($name, 'data-')) {
@@ -658,7 +686,7 @@ abstract class FormField implements DatabaseAwareInterface, CurrentUserInterface
         $attributes = [
             'multiple', 'name', 'id', 'hint', 'class', 'description', 'labelclass', 'onchange', 'onclick', 'validate', 'pattern', 'validationtext',
             'default', 'required', 'disabled', 'readonly', 'autofocus', 'hidden', 'autocomplete', 'spellcheck', 'translateHint', 'translateLabel',
-            'translate_label', 'translateDescription', 'translate_description', 'size', 'showon', ];
+            'translate_label', 'translateDescription', 'translate_description', 'size', 'showon', 'layoutIncludePath'];
 
         $this->default = isset($element['value']) ? (string) $element['value'] : $this->default;
 
@@ -1060,7 +1088,13 @@ abstract class FormField implements DatabaseAwareInterface, CurrentUserInterface
 
         $data = array_merge($this->collectLayoutData(), $data);
 
-        return $this->getRenderer($this->renderLayout)->render($data);
+        $renderer = $this->getRenderer($this->renderLayout);
+
+        if (isset($options['layoutIncludePath']) && is_dir(Path::check($options['layoutIncludePath']))) {
+            $renderer->addIncludePaths($options['layoutIncludePath']);
+        }
+
+        return $renderer->render($data);
     }
 
     /**
@@ -1362,6 +1396,32 @@ abstract class FormField implements DatabaseAwareInterface, CurrentUserInterface
     }
 
     /**
+     * Add an additional layout path where the renderer should look for layouts.
+     * Last path added will have highest priority.
+     *
+     * @param   string  $path  The path to a layout folder
+     *
+     * @return  boolean true on success otherwise false
+     *
+     * @since __DEPLOY_VERSION__
+     */
+    public function addLayoutPath(string $path): bool
+    {
+        // Try to add absolute path
+        if (!is_dir($path)) {
+            $path = JPATH_ROOT . '/' . ltrim($path, '/');
+        }
+
+        if (is_dir($path)) {
+            $this->layoutPaths[] = $path;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Allow to override renderer include paths in child fields
      *
      * @return  array
@@ -1372,7 +1432,13 @@ abstract class FormField implements DatabaseAwareInterface, CurrentUserInterface
     {
         $renderer = new FileLayout('default');
 
-        return $renderer->getDefaultIncludePaths();
+        $paths = $renderer->getDefaultIncludePaths();
+
+        foreach ($this->layoutPaths as $path) {
+            array_unshift($paths, $path);
+        }
+
+        return $paths;
     }
 
     /**
