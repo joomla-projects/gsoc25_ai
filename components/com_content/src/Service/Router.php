@@ -95,9 +95,7 @@ class Router extends RouterView
         $this->registerView($article);
         $this->registerView(new RouterViewConfiguration('archive'));
         $this->registerView(new RouterViewConfiguration('featured'));
-        $form = new RouterViewConfiguration('form');
-        $form->setKey('a_id');
-        $this->registerView($form);
+        $this->registerView(new RouterViewConfiguration('form'));
 
         parent::__construct($app, $menu);
 
