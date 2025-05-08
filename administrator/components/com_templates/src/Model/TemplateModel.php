@@ -776,11 +776,7 @@ class TemplateModel extends FormModel
             }
 
             // Adjust to new template name
-            if (!$this->fixTemplateName()) {
-                return false;
-            }
-
-            return true;
+            return $this->fixTemplateName();
         }
 
         $app->enqueueMessage(Text::_('COM_TEMPLATES_ERROR_INVALID_FROM_NAME'), 'error');
@@ -2065,17 +2061,11 @@ class TemplateModel extends FormModel
         }
 
         // Create an empty media folder structure
-        if (
-            !Folder::create($toPath . '/media')
-            || !Folder::create($toPath . '/media/css')
-            || !Folder::create($toPath . '/media/js')
-            || !Folder::create($toPath . '/media/images')
-            || !Folder::create($toPath . '/media/scss')
-        ) {
-            return false;
-        }
-
-        return true;
+        return Folder::create($toPath . '/media')
+            && Folder::create($toPath . '/media/css')
+            && Folder::create($toPath . '/media/js')
+            && Folder::create($toPath . '/media/images')
+            && Folder::create($toPath . '/media/scss');
     }
 
     /**
