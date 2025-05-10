@@ -9,10 +9,9 @@
 
 defined('_JEXEC') or die;
 
-use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 
-HTMLHelper::_('behavior.formvalidator');
+$this->getDocument()->getWebAssetManager()->useScript('form.validate');
 
 /** @var \Joomla\CMS\Installation\View\Preinstall\HtmlView $this */
 ?>

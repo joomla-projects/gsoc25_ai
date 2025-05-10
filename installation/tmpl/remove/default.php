@@ -13,7 +13,7 @@ use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Uri\Uri;
 
-HTMLHelper::_('behavior.formvalidator');
+$this->getDocument()->getWebAssetManager()->useScript('form.validate');
 
 /** @var \Joomla\CMS\Installation\View\Remove\HtmlView $this */
 ?>
