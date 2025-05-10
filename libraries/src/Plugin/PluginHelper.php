@@ -10,6 +10,7 @@
 namespace Joomla\CMS\Plugin;
 
 use Joomla\CMS\Cache\Exception\CacheExceptionInterface;
+use Joomla\CMS\Extension\PluginWithSubscriberInterface;
 use Joomla\CMS\Factory;
 use Joomla\Event\DispatcherAwareInterface;
 use Joomla\Event\DispatcherInterface;
@@ -231,7 +232,7 @@ abstract class PluginHelper
 
         $plugin = Factory::getApplication()->bootPlugin($plugin->name, $plugin->type);
 
-        if ($dispatcher && $plugin instanceof DispatcherAwareInterface) {
+        if ($dispatcher && $plugin instanceof DispatcherAwareInterface && !$plugin instanceof PluginWithSubscriberInterface) {
             $plugin->setDispatcher($dispatcher);
         }
 
@@ -239,7 +240,12 @@ abstract class PluginHelper
             return;
         }
 
-        $plugin->registerListeners();
+        // @TODO: From 7.0 it should use $dispatcher->addSubscriber($plugin) only, and check only for SubscriberInterface.
+        if ($plugin instanceof PluginWithSubscriberInterface) {
+            $dispatcher->addSubscriber($plugin);
+        } else {
+            $plugin->registerListeners();
+        }
     }
 
     /**
