@@ -90,6 +90,12 @@ class PlgSystemAicontentassistant extends CMSPlugin
                 letter-spacing: .2px;
             }
 
+            /* Inline status messages */
+            .ai-status { font-size:12px; margin-top:6px; line-height:1.4; display:none; }
+            .ai-status.ai-status-success { color:#047857; }
+            .ai-status.ai-status-error { color:#b91c1c; }
+            .ai-status.ai-status-info { color:#0f172a; }
+
             .ai-header-actions { display: flex; gap: 8px; }
             .ai-btn { 
                 border: 1px solid #cbd5e1; 
@@ -138,6 +144,7 @@ class PlgSystemAicontentassistant extends CMSPlugin
                 <h4 id="ai-assistant-title">AI Content Assistant</h4>
             </div>
             <div id="ai-assistant-body">
+                <div id="ai-generic-status" class="ai-status" style="display:none;"></div>
                 <!-- Prompt box
                 <div style="margin-bottom: 10px;">
                     <label style="display:block; margin-bottom:6px; font-weight:600;">Your Prompt</label>
@@ -157,33 +164,32 @@ class PlgSystemAicontentassistant extends CMSPlugin
                         <button onclick="generateAIIntroduction()" id="intro-generate-btn" class="ai-btn primary">Generate Introduction</button>
                         <div id="ai-intro-loading" style="display:none;">Generating introduction...</div>
                     </div>
+                    <div id="ai-intro-status" class="ai-status" style="display:none;"></div>
                     <div id="ai-result-intro-area" style="display:none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e5e5;">
                         <label style="display:block; margin-bottom:6px; font-weight:600;">Introduction</label>
                         <div id="ai-result-intro" style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:6px; font-size:14px; line-height:1.5; max-height:35vh; overflow-y:auto;"></div>
                         <div style="margin-top:10px;">
-                            <button onclick="copyToClipboard(\'ai-result-intro\')" class="ai-btn">Copy Introduction</button>
+                            <button onclick="copyToClipboard(\'ai-result-intro\')" class="ai-btn">Copy</button>
+                            <button onclick="useIntroductionInEditor()" class="ai-btn primary" style="background:#0d9488; border-color:#0d9488;">Use Introduction</button>
                         </div>
                     </div>
                 </div>
                 <!-- Meta Description Generator -->
-                <div style="margin: 16px 0;">
+                <div style="margin: 14px 0;">
                     <div style="font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
                         <span>Meta Description Generator</span>
                     </div>
-                    <div style="display:grid; gap:8px; grid-template-columns: 1fr;">
-                        <input id="ai-meta-title" type="text" placeholder="Article title" style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
-                        <input id="ai-meta-keywords" type="text" placeholder="Primary keyword(s)" style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
-                        <textarea id="ai-meta-summary" placeholder="Optional brief summary" style="min-height:70px; padding:8px; border:1px solid #ddd; border-radius:6px; resize: vertical;"></textarea>
-                    </div>
-                    <div style="display:flex; gap:8px; align-items:center; margin-top: 8px;">
-                        <button onclick="generateMetaDescription()" id="meta-generate-btn" class="ai-btn primary">Generate Meta Description</button>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <button onclick="generateMetaDescriptionAuto()" id="meta-generate-btn" class="ai-btn primary">Generate Meta Description</button>
                         <div id="ai-meta-loading" style="display:none;">Generating meta description...</div>
                     </div>
+                    <div id="ai-meta-status" class="ai-status" style="display:none;"></div>
                     <div id="ai-result-meta-area" style="display:none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e5e5;">
                         <label style="display:block; margin-bottom:6px; font-weight:600;">Meta Description</label>
-                        <div id="ai-result-meta" style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:6px; font-size:14px; line-height:1.5; max-height:35vh; overflow-y:auto; white-space:pre-wrap;"></div>
+                        <div id="ai-result-meta" style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:6px; font-size:14px; line-height:1.5; max-height:24vh; overflow-y:auto; white-space:pre-wrap;"></div>
                         <div style="margin-top:10px;">
-                            <button onclick="copyToClipboard(\'ai-result-meta\')" class="ai-btn">Copy Meta Description</button>
+                            <button onclick="copyToClipboard(\'ai-result-meta\')" class="ai-btn">Copy</button>
+                            <button onclick="applyMetaDescriptionToField()" class="ai-btn primary" style="background:#0d9488; border-color:#0d9488;">Use Meta Description</button>
                         </div>
                     </div>
                 </div>
@@ -225,7 +231,7 @@ class PlgSystemAicontentassistant extends CMSPlugin
             var promptEl = document.getElementById("ai-prompt");
             var prompt = (promptEl ? promptEl.value : "").trim();
             if (!prompt) {
-                alert("Please enter a prompt!");
+                aiShowMessage("generic","Please enter a prompt.","error");
                 return;
             }
 
@@ -263,22 +269,23 @@ class PlgSystemAicontentassistant extends CMSPlugin
                     }
 
                     if (content) {
-                        document.getElementById("ai-result").innerHTML = content.replace(/\\n/g, "<br>");
+                        document.getElementById("ai-result").innerHTML = content.replace(/\n/g, "<br>");
                         document.getElementById("ai-result-area").style.display = "block";
+                        aiShowMessage("generic","Content generated.","success");
                     } else {
-                        alert("No content received from AI");
+                        aiShowMessage("generic","No content received from AI.","error");
                     }
                 } catch(e) {
                     document.getElementById("ai-loading").style.display = "none";
                     document.getElementById("generate-btn").disabled = false;
-                    alert("JSON Parse Error.");
+                    aiShowMessage("generic","Response parse error.","error");
                     console.error(e);
                 }
             })
             .catch(function(error){
                 document.getElementById("ai-loading").style.display = "none";
                 document.getElementById("generate-btn").disabled = false;
-                alert("Network Error: " + error.message);
+                aiShowMessage("generic","Request failed: " + error.message,"error");
             });
         }
 
@@ -286,10 +293,7 @@ class PlgSystemAicontentassistant extends CMSPlugin
             var title = (document.getElementById("ai-intro-title").value || "").trim();
             var audience = (document.getElementById("ai-intro-audience").value || "").trim();
 
-            if (!title) {
-                alert("Please enter a Title.");
-                return;
-            }
+            if (!title) { aiShowMessage("intro","Please enter a title.","error"); return; }
 
             document.getElementById("ai-intro-loading").style.display = "block";
             var introArea = document.getElementById("ai-result-intro-area");
@@ -331,36 +335,35 @@ class PlgSystemAicontentassistant extends CMSPlugin
                         var el = document.getElementById("ai-result-intro");
                         if (el) el.innerHTML = content.replace(/\n/g, "<br>");
                         if (introArea) introArea.style.display = "block";
+                        aiShowMessage("intro","Introduction generated.","success");
                     } else {
-                        alert("No content received from AI");
+                        aiShowMessage("intro","No content received from AI.","error");
                     }
                 } catch(e) {
                     document.getElementById("ai-intro-loading").style.display = "none";
                     document.getElementById("intro-generate-btn").disabled = false;
-                    alert("JSON Parse Error.");
+                    aiShowMessage("intro","Response parse error.","error");
                     console.error(e);
                 }
             })
             .catch(function(error){
                 document.getElementById("ai-intro-loading").style.display = "none";
                 document.getElementById("intro-generate-btn").disabled = false;
-                alert("Error: " + error.message);
+                aiShowMessage("intro","Request failed: " + error.message,"error");
             });
     }
 
-        function generateMetaDescription() {
-            var title = (document.getElementById("ai-meta-title").value || "").trim();
-            var keywords = (document.getElementById("ai-meta-keywords").value || "").trim();
-            var summary = (document.getElementById("ai-meta-summary").value || "").trim();
+        function generateMetaDescriptionAuto() {
+            var titleEl = document.querySelector("#jform_title");
+            var title = titleEl ? (titleEl.value || "").trim() : "";
+            if (!title) { aiShowMessage("meta","Enter an article title first.","error"); return; }
 
-            if (!title) {
-                alert("Please enter the Article Title.");
-                return;
-            }
-            if (!keywords) {
-                alert("Please enter the primary keyword(s).");
-                return;
-            }
+            var content = "";
+            try { if (window.tinyMCE) { var ed = tinyMCE.get("jform_articletext"); if (ed) content = ed.getContent({format:"text"}); } } catch(e) {}
+            if (!content) { var raw = document.querySelector("#jform_articletext"); if (raw) content = raw.value || raw.textContent || ""; }
+            content = (content || "").replace(/\s+/g," ").trim();
+            if (!content) { aiShowMessage("meta","Article content is empty. Add some content first.","error"); return; }
+            var excerpt = content.substring(0, 2000);
 
             document.getElementById("ai-meta-loading").style.display = "block";
             var metaArea = document.getElementById("ai-result-meta-area");
@@ -368,7 +371,7 @@ class PlgSystemAicontentassistant extends CMSPlugin
             document.getElementById("meta-generate-btn").disabled = true;
 
             var ajaxUrl = ' . "'" . Uri::root() . "index.php?option=com_ajax&group=system&plugin=aicontentassistant&format=json" . "'" . ';
-            var requestData = { action: "meta_description", title: title, keywords: keywords, summary: summary };
+            var requestData = { action: "meta_description_auto", title: title, content: excerpt };
 
             fetch(ajaxUrl, {
                 method: "POST",
@@ -384,43 +387,84 @@ class PlgSystemAicontentassistant extends CMSPlugin
                     var data = JSON.parse(cleanText);
                     document.getElementById("ai-meta-loading").style.display = "none";
                     document.getElementById("meta-generate-btn").disabled = false;
-
                     var content = "";
-                    if (data.success && data.content) {
-                        content = data.content;
-                    } else if (data.data && data.data[0]) {
-                        var innerData = JSON.parse(data.data[0]);
-                        if (innerData.success && innerData.content) content = innerData.content;
-                    }
-
+                    if (data.success && data.content) { content = data.content; }
+                    else if (data.data && data.data[0]) { var innerData = JSON.parse(data.data[0]); if (innerData.success && innerData.content) content = innerData.content; }
                     if (content) {
-                        var el = document.getElementById("ai-result-meta");
-                        if (el) el.innerText = content;
-                        if (metaArea) metaArea.style.display = "block";
-                    } else {
-                        alert("No content received from AI");
-                    }
-                } catch(e) {
+                        var el = document.getElementById("ai-result-meta"); if (el) { el.innerText = content; }
+                        if (metaArea) metaArea.style.display="block";
+                        aiShowMessage("meta","Meta description generated.","success");
+                    } else { aiShowMessage("meta","No content received from AI.","error"); }
+                } catch(e){
                     document.getElementById("ai-meta-loading").style.display = "none";
                     document.getElementById("meta-generate-btn").disabled = false;
-                    alert("JSON Parse Error.");
+                    aiShowMessage("meta","Response parse error.","error");
                     console.error(e);
                 }
             })
-            .catch(function(error){
+            .catch(function(err){
                 document.getElementById("ai-meta-loading").style.display = "none";
                 document.getElementById("meta-generate-btn").disabled = false;
-                alert("Error: " + error.message);
+                aiShowMessage("meta","Request failed: " + err.message,"error");
             });
         }
+
+        function useIntroductionInEditor() {
+            var introEl = document.getElementById("ai-result-intro");
+            if (!introEl) { aiShowMessage("intro","No introduction to use yet.","error"); return; }
+            var text = introEl.innerText || "";
+            if (!text.trim()) { aiShowMessage("intro","Generated introduction is empty.","error"); return; }
+            var inserted = false;
+            try {
+                if (window.tinyMCE) { var ed = tinyMCE.get("jform_articletext"); if (ed) { ed.focus(); var safe = text.replace(/</g,"&lt;").replace(/>/g,"&gt;"); ed.selection.setContent("<p>" + safe + "</p>"); inserted = true; } }
+            } catch(e) { console.warn("TinyMCE insert failed", e); }
+            if (!inserted) {
+                var ta = document.getElementById("jform_articletext"); if (ta) { ta.value += (ta.value ? "\n\n" : "") + text + "\n"; inserted = true; }
+            }
+            if (inserted) aiShowMessage("intro","Introduction inserted into editor.","success"); else aiShowMessage("intro","Could not insert introduction.","error");
+        }
+
+        function applyMetaDescriptionToField() {
+            var metaEl = document.getElementById("ai-result-meta");
+            if (!metaEl) { aiShowMessage("meta","No meta description yet.","error"); return; }
+            var text = (metaEl.innerText || "").trim(); if (!text) { aiShowMessage("meta","Meta description is empty.","error"); return; }
+            var field = document.getElementById("jform_metadesc"); if (field) { field.value = text; aiShowMessage("meta","Meta description applied to form field.","success"); }
+            else { aiShowMessage("meta","Meta description field not found on this form.","error"); }
+        }
+
         function copyToClipboard(elementId) {
             var target = document.getElementById(elementId);
             var content = target ? (target.innerText || target.textContent || "") : "";
+            if (!content.trim()) {
+                if (elementId === "ai-result-intro") aiShowMessage("intro","Nothing to copy.","error");
+                else if (elementId === "ai-result-meta") aiShowMessage("meta","Nothing to copy.","error");
+                else aiShowMessage("generic","Nothing to copy.","error");
+                return;
+            }
             navigator.clipboard.writeText(content).then(function() {
-                alert("Content copied to clipboard! You can paste it into the editor.");
+                if (elementId === "ai-result-intro") aiShowMessage("intro","Copied to clipboard.","success");
+                else if (elementId === "ai-result-meta") aiShowMessage("meta","Copied to clipboard.","success");
+                else aiShowMessage("generic","Copied to clipboard.","success");
             }).catch(function() {
-                alert("Please manually copy the generated content.");
+                if (elementId === "ai-result-intro") aiShowMessage("intro","Copy failed.","error");
+                else if (elementId === "ai-result-meta") aiShowMessage("meta","Copy failed.","error");
+                else aiShowMessage("generic","Copy failed.","error");
             });
+        }
+
+        // Inline status message helper
+        function aiShowMessage(section, message, type) {
+            var el = document.getElementById("ai-" + section + "-status");
+            if (!el) return;
+            if (!message) {
+                el.textContent="";
+                el.style.display="none";
+                el.className="ai-status";
+                return;
+            }
+            el.textContent = message;
+            el.className = "ai-status ai-status-" + (type || "info");
+            el.style.display = "block";
         }
         </script>';
 
@@ -482,33 +526,32 @@ class PlgSystemAicontentassistant extends CMSPlugin
                     'success' => true,
                     'content' => $generatedContent
                 ]);
-            } elseif ($data['action'] === 'meta_description') {
+            } elseif ($data['action'] === 'meta_description_auto') {
                 $title = isset($data['title']) ? trim($data['title']) : '';
-                $keywords = isset($data['keywords']) ? trim($data['keywords']) : '';
-                $summary = isset($data['summary']) ? trim($data['summary']) : '';
+                $content = isset($data['content']) ? trim($data['content']) : '';
 
-                if ($title === '' || $keywords === '') {
+                if ($title === '' || $content === '') {
                     return json_encode([
                         'success' => false,
-                        'message' => 'Title and primary keyword(s) are required.'
+                        'message' => 'Title and content are required.'
                     ]);
                 }
 
-                // Build SEO-focused prompt for meta description
-                $prompt = "You are an SEO assistant. Write a single meta description for an article. "
-                    . "Constraints: 150-160 characters, include the primary keyword near the beginning, accurately summarize the page, and add a subtle call-to-action. "
-                    . "Avoid quotes, emojis, hashtags, and line breaks. Output only the description sentence.\n\n"
-                    . "Title: " . $title . "\n"
-                    . "Primary keyword(s): " . $keywords . "\n";
-
-                if ($summary !== '') {
-                    $prompt .= "Brief summary/context: " . $summary . "\n";
-                }
+                // Build prompt using article excerpt
+                $excerpt = mb_substr($content, 0, 2000);
+                $prompt = "You are an SEO assistant. Generate a single SEO meta description for the following article. "
+                    . "Constraints: maximum 300 characters, compelling, accurate, includes a natural call-to-action, no quotes, no line breaks, no emojis. "
+                    . "Return ONLY the description text.\n\nTitle: " . $title . "\nArticle excerpt: " . $excerpt;
 
                 $generatedContent = $this->callAI($prompt);
-
                 $generatedContent = trim(preg_replace('/\s+/', ' ', $generatedContent));
                 $generatedContent = trim($generatedContent, "\"'“”‘’ ");
+
+                // // Enforce character window
+                // if (mb_strlen($generatedContent) > 300) {
+                //     $generatedContent = mb_substr($generatedContent, 0, 300);
+                //     $generatedContent = preg_replace('/[^\p{L}\p{N}\)]*$/u', '', $generatedContent);
+                // }
 
                 return json_encode([
                     'success' => true,
