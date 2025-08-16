@@ -129,7 +129,6 @@ class PlgSystemAicontentassistant extends CMSPlugin
                 cursor: pointer; 
                 z-index: 9999; 
                 font-weight: 700; 
-                letter-spacing: .5px; 
                 box-shadow: -4px 0 12px rgba(0,0,0,0.2);
             }
 
@@ -190,6 +189,26 @@ class PlgSystemAicontentassistant extends CMSPlugin
                         <div style="margin-top:10px;">
                             <button onclick="copyToClipboard(\'ai-result-meta\')" class="ai-btn">Copy</button>
                             <button onclick="applyMetaDescriptionToField()" class="ai-btn primary" style="background:#0d9488; border-color:#0d9488;">Use Meta Description</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Image Generation -->
+                <div style="margin: 14px 0;">
+                    <div style="font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                        <span>Image Generator</span>
+                    </div>
+                    <div style="display:grid; gap:8px; grid-template-columns: 1fr;">
+                        <input id="ai-image-prompt" type="text" placeholder="Describe the image you want" style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-top: 8px;">
+                        <button onclick="generateAIImage()" id="image-generate-btn" class="ai-btn primary">Generate Image</button>
+                        <div id="ai-image-loading" style="display:none;">Generating image...</div>
+                    </div>
+                    <div id="ai-image-status" class="ai-status" style="display:none;"></div>
+                    <div id="ai-result-image-area" style="display:none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e5e5;">
+                        <label style="display:block; margin-bottom:6px; font-weight:600;">Generated Image</label>
+                        <div id="ai-result-image-wrapper" style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:6px; display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+                            <img id="ai-result-image" alt="AI generated" style="max-width:100%; border-radius:4px; display:none;" />
                         </div>
                     </div>
                 </div>
@@ -351,7 +370,7 @@ class PlgSystemAicontentassistant extends CMSPlugin
                 document.getElementById("intro-generate-btn").disabled = false;
                 aiShowMessage("intro","Request failed: " + error.message,"error");
             });
-    }
+        }
 
         function generateMetaDescriptionAuto() {
             var titleEl = document.querySelector("#jform_title");
@@ -430,6 +449,58 @@ class PlgSystemAicontentassistant extends CMSPlugin
             var text = (metaEl.innerText || "").trim(); if (!text) { aiShowMessage("meta","Meta description is empty.","error"); return; }
             var field = document.getElementById("jform_metadesc"); if (field) { field.value = text; aiShowMessage("meta","Meta description applied to form field.","success"); }
             else { aiShowMessage("meta","Meta description field not found on this form.","error"); }
+        }
+
+        function generateAIImage() {
+            var prompt = (document.getElementById("ai-image-prompt").value || "").trim();
+            if (!prompt) { aiShowMessage("image","Please enter an image prompt.","error"); return; }
+            document.getElementById("ai-image-loading").style.display = "block";
+            document.getElementById("image-generate-btn").disabled = true;
+            var area = document.getElementById("ai-result-image-area"); if (area) area.style.display = "none";
+            var ajaxUrl = ' . "'" . Uri::root() . "index.php?option=com_ajax&group=system&plugin=aicontentassistant&format=json" . "'" . ';
+            var requestData = { action: "generate_image", prompt: prompt };
+
+            fetch(ajaxUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestData)
+            })
+            .then(function(response){ return response.text(); })
+            .then(function(text){
+                try { console.log("[AI Image][raw]", text.substring(0,500)); } catch(_e){}
+                document.getElementById("ai-image-loading").style.display = "none";
+                document.getElementById("image-generate-btn").disabled = false;
+                var data = {}; try { data = JSON.parse(text); } catch(e) { aiShowMessage("image","Parse error.","error"); return; }
+                // If this is a Joomla com_ajax wrapper, the actual payload is usually in data[0]
+                if (data && Array.isArray(data.data) && data.data.length === 1 && typeof data.data[0] === "string") {
+                    try {
+                        var inner = JSON.parse(data.data[0]);
+                        if (inner && (inner.success !== undefined || inner.image || inner.content)) {
+                            console.log("[AI Image] Unwrapped com_ajax inner payload");
+                            data = inner;
+                        }
+                    } catch(unErr) { console.warn("[AI Image] Failed to parse inner wrapper", unErr); }
+                }
+                if (data.debug && Array.isArray(data.debug)) { try { data.debug.forEach(d=>console.log("[AI Image][debug]",d)); } catch(_e){} }
+                if (data.success && data.image) {
+                    var base = data.image;
+                    if (!base.startsWith("http") && !base.startsWith("data:")) {
+                        base = "data:image/png;base64," + base;
+                    }
+                    var img = document.getElementById("ai-result-image");
+                    img.src = base;
+                    img.style.display = "block";
+                    document.getElementById("ai-result-image-area").style.display = "block";
+                    aiShowMessage("image","Image generated.","success");
+                } else {
+                    aiShowMessage("image", data.message || "Failed to generate image.","error");
+                }
+            })
+            .catch(function(error){
+                document.getElementById("ai-image-loading").style.display = "none";
+                document.getElementById("image-generate-btn").disabled = false;
+                aiShowMessage("image","Request failed: " + error.message,"error");
+            });
         }
 
         function copyToClipboard(elementId) {
@@ -557,6 +628,49 @@ class PlgSystemAicontentassistant extends CMSPlugin
                     'success' => true,
                     'content' => $generatedContent
                 ]);
+            } elseif ($data['action'] === 'generate_image' && !empty($data['prompt'])) {
+                $prompt = trim($data['prompt']);
+                try {
+                    $base64 = $this->callAI($prompt, 'image');
+
+                    // Ensure we have a string
+                    if (!is_string($base64) || $base64 === '') {
+                        error_log('AI Plugin: Image generation empty (non-string or empty)');
+                        return json_encode([
+                            'success' => false,
+                            'message' => 'Empty image response from provider.'
+                        ]);
+                    }
+
+                    // Strip prefix
+                    if (str_starts_with($base64, 'data:')) {
+                        $parts = explode(',', $base64, 2);
+                        if (count($parts) === 2) {
+                            $base64 = $parts[1];
+                        }
+                    }
+
+                    // Basic base64 sanity check (length + charset)
+                    if (!preg_match('/^[A-Za-z0-9+\/=]{100,}$/', $base64)) {
+                        error_log('AI Plugin: Image base64 failed validation');
+                        return json_encode([
+                            'success' => false,
+                            'message' => 'Image payload not recognized as base64.'
+                        ]);
+                    }
+
+                    error_log('AI Plugin: Image response (base64) length: ' . strlen($base64));
+                    return json_encode([
+                        'success' => true,
+                        'image' => $base64
+                    ]);
+                } catch (Exception $eImg) {
+                    error_log('AI Plugin: Image generation error: ' . $eImg->getMessage());
+                    return json_encode([
+                        'success' => false,
+                        'message' => $eImg->getMessage()
+                    ]);
+                }
             }
             
             error_log('AI Plugin: Invalid request - no action or prompt');
@@ -576,7 +690,7 @@ class PlgSystemAicontentassistant extends CMSPlugin
         }
     }
 
-    private function callAI($prompt)
+    private function callAI($prompt, $type = 'text')
     {
         // Load the AI framework files
         $autoloadFile = JPATH_ROOT . '/libraries/gsoc25_ai_framework/vendor/autoload.php';
@@ -598,10 +712,26 @@ class PlgSystemAicontentassistant extends CMSPlugin
         try {
             // Create AI instance with selected provider
             $ai = \Joomla\AI\AIFactory::getAI($provider, $config);
+
+            if ($type === 'image') {
+                $providerObj = method_exists($ai, 'getProvider') ? $ai->getProvider() : null;
+                if (!$providerObj || !method_exists($providerObj, 'generateImage')) {
+                    throw new Exception('Selected AI provider does not support image generation (no generateImage on provider).');
+                }
+                // Request base64 JSON always
+                $imgResponse = $ai->generateImage($prompt, ['response_format' => 'b64_json']);
+                if (is_object($imgResponse) && method_exists($imgResponse, 'getContent')) {
+                    $content = $imgResponse->getContent();
+                    return $content;
+                }
+                throw new Exception('Unrecognized image response format.');
+            }
+
+            // Default text mode
             $response = $ai->chat($prompt);
-            
-            return $response->getContent();
-            
+            return is_object($response) && method_exists($response, 'getContent')
+                ? $response->getContent()
+                : (string) $response;
         } catch (Exception $e) {
             error_log('AI Plugin: Provider error (' . $provider . '): ' . $e->getMessage());
             throw new Exception('AI Provider Error (' . ucfirst($provider) . '): ' . $e->getMessage());
