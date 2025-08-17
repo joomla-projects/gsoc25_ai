@@ -212,6 +212,27 @@ class PlgSystemAicontentassistant extends CMSPlugin
                         </div>
                     </div>
                 </div>
+                <!-- Alt Text (Vision) Generator -->
+                <div style="margin: 14px 0;">
+                    <div style="font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+                        <span>Alt Text Generator</span>
+                    </div>
+                    <div style="display:grid; gap:8px; grid-template-columns: 1fr;">
+                        <input id="ai-alt-image-url" type="text" placeholder="Paste image URL" style="padding:8px; border:1px solid #ddd; border-radius:6px;" />
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+                        <button onclick="generateAltText()" id="alt-generate-btn" class="ai-btn primary">Generate Alt Text</button>
+                        <div id="ai-alt-loading" style="display:none;">Analyzing image...</div>
+                    </div>
+                    <div id="ai-alt-status" class="ai-status" style="display:none;"></div>
+                    <div id="ai-result-alt-area" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid #e5e5e5;">
+                        <label style="display:block; margin-bottom:6px; font-weight:600;">Generated Alt Text</label>
+                        <div id="ai-result-alt" style="background:#f8fafc; border:1px solid #e2e8f0; padding:12px; border-radius:6px; font-size:14px; line-height:1.4; white-space:pre-wrap; word-break:break-word;"></div>
+                        <div style="margin-top:10px;">
+                            <button onclick="copyToClipboard(\'ai-result-alt\')" class="ai-btn">Copy</button>
+                        </div>
+                    </div>
+                </div>
                 <!-- Prompt-based generation commented out per request
                 <div style="display:flex; gap:8px; align-items:center; margin-bottom: 8px;">
                     <button onclick="generateAIContent()" id="generate-btn" class="ai-btn primary">Generate Content</button>
@@ -503,22 +524,61 @@ class PlgSystemAicontentassistant extends CMSPlugin
             });
         }
 
+        function generateAltText() {
+            var url = (document.getElementById("ai-alt-image-url").value || "").trim();
+            if (!url) { aiShowMessage("alt","Enter an image URL first.","error"); return; }
+            document.getElementById("ai-alt-loading").style.display="block";
+            document.getElementById("alt-generate-btn").disabled=true;
+            var area = document.getElementById("ai-result-alt-area"); if (area) area.style.display="none";
+            var ajaxUrl = ' . "'" . Uri::root() . "index.php?option=com_ajax&group=system&plugin=aicontentassistant&format=json" . "'" . ';
+            var requestData = { action: "generate_alt_text", image_url: url };
+            fetch(ajaxUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(requestData)
+            })
+            .then(function(r){ return r.text(); })
+            .then(function(txt){
+                document.getElementById("ai-alt-loading").style.display="none";
+                document.getElementById("alt-generate-btn").disabled=false;
+                var data={}; try{ data=JSON.parse(txt);}catch(e){ aiShowMessage("alt","Parse error.","error"); return; }
+                if (data && Array.isArray(data.data) && data.data.length===1 && typeof data.data[0]==="string") {
+                    try { var inner = JSON.parse(data.data[0]); if (inner && inner.success !== undefined) data = inner; } catch(eParse){}
+                }
+                if (data.success && data.alt) {
+                    var el = document.getElementById("ai-result-alt"); if (el) el.textContent = data.alt;
+                    if (area) area.style.display="block";
+                    aiShowMessage("alt","Alt text generated.","success");
+                } else {
+                    aiShowMessage("alt", data.message || "Failed to generate alt text.","error");
+                }
+            })
+            .catch(function(err){
+                document.getElementById("ai-alt-loading").style.display="none";
+                document.getElementById("alt-generate-btn").disabled=false;
+                aiShowMessage("alt","Request failed: "+err.message,"error");
+            });
+        }
+
         function copyToClipboard(elementId) {
             var target = document.getElementById(elementId);
             var content = target ? (target.innerText || target.textContent || "") : "";
             if (!content.trim()) {
                 if (elementId === "ai-result-intro") aiShowMessage("intro","Nothing to copy.","error");
                 else if (elementId === "ai-result-meta") aiShowMessage("meta","Nothing to copy.","error");
+                else if (elementId === "ai-result-alt") aiShowMessage("alt","Nothing to copy.","error");
                 else aiShowMessage("generic","Nothing to copy.","error");
                 return;
             }
             navigator.clipboard.writeText(content).then(function() {
                 if (elementId === "ai-result-intro") aiShowMessage("intro","Copied to clipboard.","success");
                 else if (elementId === "ai-result-meta") aiShowMessage("meta","Copied to clipboard.","success");
+                else if (elementId === "ai-result-alt") aiShowMessage("alt","Copied to clipboard.","success");
                 else aiShowMessage("generic","Copied to clipboard.","success");
             }).catch(function() {
                 if (elementId === "ai-result-intro") aiShowMessage("intro","Copy failed.","error");
                 else if (elementId === "ai-result-meta") aiShowMessage("meta","Copy failed.","error");
+                else if (elementId === "ai-result-alt") aiShowMessage("alt","Copy failed.","error");
                 else aiShowMessage("generic","Copy failed.","error");
             });
         }
@@ -671,6 +731,22 @@ class PlgSystemAicontentassistant extends CMSPlugin
                         'message' => $eImg->getMessage()
                     ]);
                 }
+            } elseif ($data['action'] === 'generate_alt_text' && !empty($data['image_url'])) {
+                $imageUrl = trim($data['image_url']);
+                if ($imageUrl === '') {
+                    return json_encode(['success' => false, 'message' => 'Image URL required']);
+                }
+                // Prompt for alt text
+                $prompt = 'You are an accessibility assistant. Your task is to generate concise, descriptive alt text for this image. Good alt text briefly describes key elements (people, objects, actions, setting, or text), avoids unnecessary detail, and skips quotes or phrases like- image of. Keep it under 125 characters and focus only on whats essential.';
+                try {
+                    $alt = $this->callAI($prompt, 'vision', ['image' => $imageUrl]);
+                    $alt = trim(preg_replace('/\s+/', ' ', $alt));
+                    if (strlen($alt) > 130) { $alt = substr($alt, 0, 130); }
+                    $alt = trim($alt, "\"'“”‘’ ");
+                    return json_encode(['success' => true, 'alt' => $alt]);
+                } catch (Exception $ve) {
+                    return json_encode(['success' => false, 'message' => $ve->getMessage()]);
+                }
             }
             
             error_log('AI Plugin: Invalid request - no action or prompt');
@@ -690,7 +766,7 @@ class PlgSystemAicontentassistant extends CMSPlugin
         }
     }
 
-    private function callAI($prompt, $type = 'text')
+    private function callAI($prompt, $type = 'text', $options = [])
     {
         // Load the AI framework files
         $autoloadFile = JPATH_ROOT . '/libraries/gsoc25_ai_framework/vendor/autoload.php';
@@ -714,17 +790,23 @@ class PlgSystemAicontentassistant extends CMSPlugin
             $ai = \Joomla\AI\AIFactory::getAI($provider, $config);
 
             if ($type === 'image') {
-                $providerObj = method_exists($ai, 'getProvider') ? $ai->getProvider() : null;
-                if (!$providerObj || !method_exists($providerObj, 'generateImage')) {
-                    throw new Exception('Selected AI provider does not support image generation (no generateImage on provider).');
-                }
-                // Request base64 JSON always
                 $imgResponse = $ai->generateImage($prompt, ['response_format' => 'b64_json']);
                 if (is_object($imgResponse) && method_exists($imgResponse, 'getContent')) {
-                    $content = $imgResponse->getContent();
-                    return $content;
+                    return $imgResponse->getContent();
                 }
-                throw new Exception('Unrecognized image response format.');
+                return (string) $imgResponse;
+            }
+            if ($type === 'vision') {
+                $imageUrl = $options['image'] ?? '';
+                if ($imageUrl === '') {
+                    throw new Exception('Request missing image.');
+                }
+
+                $visionResponse = $ai->vision($prompt, $imageUrl, $options);
+                if (is_object($visionResponse) && method_exists($visionResponse, 'getContent')) {
+                    return $visionResponse->getContent();
+                }
+                return (string) $visionResponse;
             }
 
             // Default text mode
