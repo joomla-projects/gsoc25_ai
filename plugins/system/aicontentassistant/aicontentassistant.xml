@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="system" method="upgrade">
+    <name>PLG_SYSTEM_AICONTENTASSISTANT</name>
+    <author>Joomla! Project</author>
+    <creationDate>August 2025</creationDate>
+    <copyright>Copyright (C) 2025 Open Source Matters, Inc. All rights reserved.</copyright>
+    <license>GNU General Public License version 2 or later; see LICENSE.txt</license>
+    <authorEmail>admin@joomla.org</authorEmail>
+    <authorUrl>www.joomla.org</authorUrl>
+    <version>1.0.0</version>
+    <description>PLG_SYSTEM_AICONTENTASSISTANT_XML_DESCRIPTION</description>
+
+    <files>
+        <filename plugin="aicontentassistant">aicontentassistant.php</filename>
+        <folder>language</folder>
+    </files>
+
+    <languages folder="language">
+        <language tag="en-GB">en-GB/plg_system_aicontentassistant.ini</language>
+        <language tag="en-GB">en-GB/plg_system_aicontentassistant.sys.ini</language>
+    </languages>
+
+    <config>
+        <fields name="params">
+            <fieldset name="basic" label="AI Configuration">
+                <field name="default_provider" 
+                    type="list" 
+                    default="openai" 
+                    label="AI Provider" 
+                    description="Choose your AI provider">
+                    <option value="openai">OpenAI</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="ollama">Ollama</option>
+                </field>
+                
+                <field name="openai_api_key" 
+                    type="password" 
+                    label="OpenAI API Key" 
+                    description="Your OpenAI API key (starts with sk-)" 
+                    size="60" 
+                    maxlength="500"
+                    showon="default_provider:openai" />
+                    
+                <field name="anthropic_api_key" 
+                    type="password" 
+                    label="Anthropic API Key" 
+                    description="Your Anthropic API key (starts with sk-ant-)" 
+                    size="60" 
+                    maxlength="500"
+                    showon="default_provider:anthropic" />
+                    
+                <field name="ollama_base_url" 
+                    type="text" 
+                    label="Ollama Base URL" 
+                    description="Ollama server URL (e.g., http://localhost:11434)" 
+                    default="http://localhost:11434"
+                    size="60"
+                    showon="default_provider:ollama" />
+            </fieldset>
+        </fields>
+    </config>
+</extension>
